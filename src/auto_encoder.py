@@ -47,8 +47,8 @@ bsds500_img_folder: str = join(
 )
 
 
-bsd500_train: Path = Path(BASE_DIR / "data/bsd500/data/images/train")
-bsd500_val: Path = Path(BASE_DIR / "data/bsd500/data/images/val")
+bsd500_train: Path = Path(BASE_DIR / "data/BSDS500_extracted/BSDS500-master/BSDS500/data/images/train")
+bsd500_val: Path = Path(BASE_DIR / "data/BSDS500_extracted/BSDS500-master/BSDS500/data/images/val")
 
 cbsd_ground_truth: Path = (
     BASE_DIR / "data/cbsd68/CBSD68-dataset-master/CBSD68/original_png"
