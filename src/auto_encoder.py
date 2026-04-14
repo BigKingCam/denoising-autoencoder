@@ -13,7 +13,7 @@ from pathlib import Path
 # from dataset import Dataset
 # from noise import add_noise
 
-BASE_DIR: Path = Path(__file__).resolve().parent
+BASE_DIR: Path = Path(__file__).resolve().parent.parent
 
 cbsd68_url: str = (
     "https://github.com/clausmichele/CBSD68-dataset/archive/refs/heads/master.zip"
