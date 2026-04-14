@@ -43,6 +43,11 @@ cbsd_noise: Path = BASE_DIR / "data/cbsd68/CBSD68-dataset-master/CBSD68/"
 def build_image_set(folder: Path) -> list[str]:
     """Builds the image set"""
 
+    if not folder.exists():
+        raise FileNotFoundError(f"Folder does not exist: {folder}")
+    if not folder.is_dir():
+        raise NotADirectoryError(f"Not a directory: {folder}")
+
     image_paths: list[str] = []
 
     for file in listdir(folder):
