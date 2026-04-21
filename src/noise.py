@@ -40,7 +40,10 @@ def add_occlusion(x: tf.Tensor, size: int = 12) -> tf.Tensor:
     top: tf.Tensor = tf.random.uniform([], 0, h - size, dtype=tf.int32)
     left: tf.Tensor = tf.random.uniform([], 0, w - size, dtype=tf.int32)
 
-    mask: tf.Tensor = tf.ones_like(x)
+    # Create mask
+    mask: tf.Tensor = tf.ones((h, w), dtype=x.dtype)
+
+    occlusion: tf.Tensor = tf.zeros((size, size), dtype=x.dtype)
 
     mask = tf.tensor_scatter_nd_update(
         mask,
@@ -55,8 +58,12 @@ def add_occlusion(x: tf.Tensor, size: int = 12) -> tf.Tensor:
             ),
             [-1, 2],
         ),
-        updates=tf.zeros([size * size]),
+        updates=tf.reshape(occlusion, [-1]),
     )
+
+    # Expand to channels if needed
+    if tf.rank(x) == 3:
+        mask = tf.expand_dims(mask, axis=-1)
 
     return x * mask
 
