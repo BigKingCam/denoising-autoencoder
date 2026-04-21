@@ -74,18 +74,33 @@ def get_noise_fn(config: dict) -> Callable[[tf.Tensor], tf.Tensor]:
 
     if noise_type == "gaussian":
         sigma = config["noise"]["sigma"]
-        return lambda x: add_gaussian_noise(x, sigma)
+
+        def fn(x):
+            return add_gaussian_noise(x, sigma)
 
     elif noise_type == "salt_pepper":
         p = config["noise"]["p"]
-        return lambda x: add_salt_pepper_noise(x, p)
+
+        def fn(x):
+            return add_salt_pepper_noise(x, p)
 
     elif noise_type == "occlusion":
         size = config["noise"]["size"]
-        return lambda x: add_occlusion(x, size)
+
+        def fn(x):
+            return add_occlusion(x, size)
 
     else:
         raise ValueError("Unknown noise type")
+
+    return fn
+
+
+def make_denoising_dataset(dataset, noise_fn):
+    return dataset.map(
+        lambda x: (noise_fn(x), x),
+        num_parallel_calls=tf.data.AUTOTUNE
+    )
 
 
 if __name__ == "__main__":
