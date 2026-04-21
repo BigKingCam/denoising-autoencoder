@@ -45,8 +45,10 @@ def build_image_set(folder: Path) -> list[str]:
 
     for file in listdir(folder):
         path: str = join(folder, file)
-        if isfile(path):
+
+        if isfile(path) and file.lower().endswith(".jpg"):
             image_paths.append(path)
+
     return image_paths
 
 
@@ -137,9 +139,6 @@ test_config = {"noise": {"type": "gaussian", "sigma": 0.2}}
 noise_fn = get_noise_fn(test_config)
 visualize_noise(train_ds, noise_fn)
 visualize_noise_levels(train_ds, test_config)
-
-
-
 
 
 # def load_datasets():
