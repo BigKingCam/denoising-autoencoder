@@ -13,12 +13,15 @@ from keras.utils import load_img
 class Dataset(tf.keras.utils.Sequence):
     """Dataset Class"""
 
+    patch_size: int = 64
+    batch_size: int = 32
+
     def __init__(
         self,
         image_paths: list[str],
-        patch_size: int = 64,
+        #patch_size: int = 64,
         sigma: int = 25,
-        batch_size: int = 32,
+        #batch_size: int = 32,
         training: bool = True,
     ) -> None:
         """Dataset Constructor"""
