@@ -8,7 +8,7 @@ import numpy as np
 import tensorflow as tf
 from keras.utils import img_to_array, load_img
 
-from .noise import add_gaussian_noise, add_occlusion, add_salt_pepper_noise
+from noise import add_gaussian_noise, add_occlusion, add_salt_pepper_noise
 
 DEFAULT_PATCH_SIZE: int = 64
 DEFAULT_SIGMA: int = 25
