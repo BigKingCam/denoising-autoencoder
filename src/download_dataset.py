@@ -47,6 +47,10 @@ def download_dataset(dataset_path: Path) -> Path:
     else:
         raise ValueError(f"Unknown dataset path: {dataset_path}")
 
+    if target_dir.exists():
+        print(f"Target directory {target_dir} already exists")
+        return target_dir
+
     print(f"Downloading dataset from {dataset_url}")
 
     dataset_zip_path: Path = Path(
