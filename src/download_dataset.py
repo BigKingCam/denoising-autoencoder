@@ -79,6 +79,9 @@ def download_dataset(dataset_path: Path) -> Path:
 
     if not target_dir.exists():
         _safe_move(src_path, target_dir)
+
+    _remove_thumbs_db(target_dir)
+
     _safe_rmtree(extracted_root)
     _safe_unlink(dataset_zip_path)  # deletes whatever.zip
 
@@ -117,6 +120,16 @@ def _safe_unlink(path: Path, retries: int = 5, delay: float = 0.5) -> None:
         except (PermissionError, OSError):
             time.sleep(delay)
     raise
+
+
+def _remove_thumbs_db(root: Path) -> None:
+    """Recursively remove all Thumbs.db files under root."""
+    if not root.exists():
+        return
+
+    for path in root.rglob("*"):
+        if path.is_file() and path.name.lower() == "thumbs.db":
+            _safe_unlink(path)
 
 
 def get_path(dataset_path: Path) -> Path:
