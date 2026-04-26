@@ -24,7 +24,7 @@ VAL_BATCH_SIZE: int = 32
 TEST_BATCH_SIZE: int = 1
 
 LEARNING_RATE: float = 1e-3
-EPOCHS: int = 3 # change back to 20
+EPOCHS: int = 3  # change back to 20
 
 INPUT_CHANNELS: int = 3
 FILTERS_STAGE_1: int = 64
@@ -37,7 +37,10 @@ TRAIN_INPUT_SHAPE: tuple[int, int, int] = (PATCH_SIZE, PATCH_SIZE, INPUT_CHANNEL
 FULL_IMAGE_INPUT_SHAPE: tuple[None, None, int] = (None, None, INPUT_CHANNELS)
 
 
-BASE_DIR: Path = Path(__file__).resolve().parents[2]
+BASE_DIR: Path = Path(__file__).resolve().parents[1]
+SAVE_DIR: Path = BASE_DIR / "models"
+SAVE_DIR.mkdir(exist_ok=True)
+
 
 cbsd68_img_folder: Path = download_dataset(TARGET_DIR_CBSD68)
 cbsd_ground_truth: Path = cbsd68_img_folder / "original_png"
@@ -99,40 +102,68 @@ def build_autoencoder(
     return models.Model(inputs, outputs, name="denoising_autoencoder")
 
 
+# Got help from ChatGPT on this one.
+def evaluate_full_image_dataset(
+    model: tf.keras.Model,
+    dataset: Dataset,
+) -> tuple[float, float]:
+    """Evaluates a full-image dataset one sample at a time."""
+    total_mse: float = 0.0
+    total_mae: float = 0.0
+    num_batches: int = len(dataset)
+
+    for i in range(num_batches):
+        noisy_batch, clean_batch = dataset[i]
+
+        predictions: tf.Tensor = model.predict(noisy_batch, verbose=0)
+
+        mse: float = tf.reduce_mean(tf.square(clean_batch - predictions)).numpy().item()
+        mae: float = tf.reduce_mean(tf.abs(clean_batch - predictions)).numpy().item()
+
+        total_mse += mse
+        total_mae += mae
+
+    avg_mse: float = total_mse / num_batches
+    avg_mae: float = total_mae / num_batches
+
+    return avg_mse, avg_mae
+
+
 # This code is referenced from:
 # Omar Hankare: Autoencoders explained
 # Link: https://ompramod.medium.com/autoencoders-explained-9196c38af6f6
 
 # NOTE: this code was adapted for the purpose of this project
 
+
 def build_dense_model(
-         input_shape: tuple[
+    input_shape: tuple[
         int | None,
         int | None,
         int,
     ] = TRAIN_INPUT_SHAPE,
 ) -> tf.keras.Model:
     """This will build the fully connected model."""
-                    # (64 x 64) x 3 = 12288
+    # (64 x 64) x 3 = 12288
     inputs = layers.Input(shape=input_shape)
 
     x = layers.Flatten()(inputs)
 
-    #encoder
-    encoded = layers.Dense(128, activation='relu')(x)
-    encoded = layers.Dense(64, activation='relu')(encoded)
-    encoded = layers.Dense(32, activation='relu')(encoded)
+    # encoder
+    encoded = layers.Dense(128, activation="relu")(x)
+    encoded = layers.Dense(64, activation="relu")(encoded)
+    encoded = layers.Dense(32, activation="relu")(encoded)
 
-    #decoder
-    decoded = layers.Dense(64, activation='relu')(encoded)
-    decoded = layers.Dense(128, activation='relu')(decoded)
-    decoded = layers.Dense(12288, activation='sigmoid')(decoded)
+    # decoder
+    decoded = layers.Dense(64, activation="relu")(encoded)
+    decoded = layers.Dense(128, activation="relu")(decoded)
+    decoded = layers.Dense(12288, activation="sigmoid")(decoded)
 
     output = layers.Reshape(input_shape)(decoded)
 
     return models.Model(inputs, output, name="dense_autoencoder")
 
-    
+
 def main() -> None:
     training_imgs: list[str] = build_image_set(bsd500_train)
     validation_imgs: list[str] = build_image_set(bsd500_val)
@@ -158,7 +189,9 @@ def main() -> None:
         shuffle=False,
     )
 
-    test_ds = Dataset(
+    # Have 2 test datasets for patch and full image
+
+    test_patch_ds = Dataset(
         image_paths=test_imgs,
         patch_size=PATCH_SIZE,
         sigma=NOISE_SIGMA,
@@ -168,18 +201,32 @@ def main() -> None:
         shuffle=False,
     )
 
-    #this can work with multiple models
+    test_full_ds = Dataset(
+        image_paths=test_imgs,
+        patch_size=PATCH_SIZE,
+        sigma=NOISE_SIGMA,
+        batch_size=TEST_BATCH_SIZE,
+        training=False,
+        return_full_image=True,
+        shuffle=False,
+        pad_multiple=2,
+    )
+
+    # this can work with multiple models
     models_to_run = {
         "denoising_autoencoder": build_autoencoder(),
         "dense_autoencoder": build_dense_model(input_shape=TRAIN_INPUT_SHAPE),
     }
 
-    for name, model, in models_to_run.items():
-        print(f"\n{'='*40}")
+    for (
+        name,
+        model,
+    ) in models_to_run.items():
+        print(f"\n{'=' * 40}")
         print(f" Running model: {name}")
-        print(f"{'='*40}\n")
+        print(f"{'=' * 40}\n")
 
-    #model: tf.keras.Model = build_autoencoder(input_shape=TRAIN_INPUT_SHAPE)
+        # model: tf.keras.Model = build_autoencoder(input_shape=TRAIN_INPUT_SHAPE)
 
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE),
@@ -195,7 +242,9 @@ def main() -> None:
             epochs=EPOCHS,
         )
 
-        model.save(f"./models/{name}.keras", overwrite = True)
+        model_save_path: Path = SAVE_DIR / f"{name}.keras"
+        model.save(model_save_path, overwrite=True)
+        print(f"Saved model [{name}] to: {model_save_path}")
 
         if name == "denoising_autoencoder":
             full_image_model: tf.keras.Model = build_autoencoder(
@@ -203,17 +252,23 @@ def main() -> None:
             )
             full_image_model.set_weights(model.get_weights())
 
+            full_model_save_path: Path = SAVE_DIR / f"{name}_full_image.keras"
+            full_image_model.save(full_model_save_path)
+            print(f"Saved full-image model [{name}] to: {full_model_save_path}")
+
             full_image_model.compile(
                 optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNING_RATE),
                 loss="mse",  # mean squared error
                 metrics=["mae"],  # mean absolute error
             )
 
-            test_results = full_image_model.evaluate(test_ds)
-            print(f"Test results: {test_results}")
+            avg_mse, avg_mae = evaluate_full_image_dataset(
+                full_image_model, test_full_ds
+            )
+            print(f"Test results [{name}]: [{avg_mse}, {avg_mae}]")
         else:
-            test_results = model.evaluate(test_ds)
-            print(f"Test results [{name}]: {test_results}") 
+            test_results = model.evaluate(test_patch_ds)
+            print(f"Test results [{name}]: {test_results}")
 
 
 if __name__ == "__main__":
